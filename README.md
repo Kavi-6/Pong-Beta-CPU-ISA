@@ -103,3 +103,11 @@ This project was developed as a first hardware-software integration project to e
 - Computer architecture
 - Digital design
 - Embedded systems
+
+## 📷 Prototype
+
+### Final FPGA Setup
+![Final Prototype](images/Final_prototype.jpg)
+
+### Dismantled Components
+![Dismantled Parts](images/Dismantled Parts.jpg)
