@@ -110,4 +110,4 @@ This project was developed as a first hardware-software integration project to e
 ![Final Prototype](images/Final_prototype.jpg)
 
 ### Dismantled Components
-![Dismantled Parts](images/Dismantled Parts.jpg)
+![Dismantled Parts](images/Dismantled_Parts.jpg)
