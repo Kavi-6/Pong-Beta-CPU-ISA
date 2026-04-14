@@ -1,0 +1,27 @@
+module rca_32_bit (
+    input a[32],  
+    input b[32],  
+    input cin,
+    output out[32],
+    output carry
+) {
+    full_adder adder[32]
+    sig sum[32]
+    always {
+        adder.a[0] = a[0]
+        adder.b[0] = b[0]  
+        adder.cin[0] = cin
+        
+        sum[0] = adder.sum[0]
+        
+        repeat(i,31){
+            adder.a[i+1] = a[i+1]
+            adder.b[i+1] = b[i+1]
+            adder.cin[i+1] = adder.cout[i]
+            sum[i+1] = adder.sum[i+1]
+        }
+        
+        out = sum
+        carry = adder.cout[31]
+    }
+}

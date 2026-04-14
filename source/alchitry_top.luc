@@ -1,0 +1,54 @@
+module alchitry_top (
+    input clk,              // 100MHz onboard clock
+    input rst_n,            // reset button (active low)
+    output led[8],          // onboard LEDs for heartbeat
+    input usb_rx,           // USB->Serial
+    output usb_tx,
+    input io_button[5],           // [P2_Dn, P2_Up, P1_Dn, P1_Up]
+    output io_led[3][8],
+    output pixel_out        // Data line for WS2812B
+  ) {
+  
+  sig rst;                  // active high reset
+  
+  // 1. Reset Conditioner
+  reset_conditioner reset_cond(.clk(clk), .in(~rst_n));
+  
+  // 2. Clock Divider for the Beta CPU (Slows it down to a readable speed)
+  // #DIV(20) means 100MHz / 2^20 ≈ 95Hz
+  counter slow_clock_gen(.clk(clk), .rst(rst), #SIZE(1), #DIV(19));
+  
+  // 3. The Motherboard Instance
+  motherboard my_motherboard(
+    .clk(clk),
+    .rst(rst),
+    .irq(io_button[4:0]),              // Map physical buttons to hub
+    .slowclk(slow_clock_gen.value)
+       // Map WS2812B driver to pin
+  );
+
+ always {
+    rst = reset_cond.out;   // standard reset wiring
+    usb_tx = usb_rx;        // loopback serial
+    
+    // 1. Correct the assignment:
+    // Connect the physical 'pixel_out' pin to the motherboard's internal signal
+    pixel_out = my_motherboard.led_data; 
+    
+    // 2. Heartbeat:
+    // Show CPU's instruction address on onboard LEDs to see if it's running
+    led = my_motherboard.ia[9:2];
+        
+        io_led = 3x{{8h00}}
+        
+        // Map the Input Buffer (Buttons) to the first row of IO LEDs
+    // This will show exactly what the MOTHERBOARD caught from the hub
+    io_led[0] = my_motherboard.input_buffer[7:0]; 
+    
+    // Map the Output Buffer (Address 0xC) to the second row of IO LEDs
+    // This shows the value the CPU wrote to address 12
+    io_led[1] = my_motherboard.output_buffer[7:0];
+    
+    // Map the CPU's memory address to the third row (good for debugging)
+    io_led[2] = my_motherboard.ma[7:0];
+}}

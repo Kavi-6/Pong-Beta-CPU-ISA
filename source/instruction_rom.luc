@@ -1,0 +1,409 @@
+module instruction_rom #(
+    WORDS = 256 // total instructions in this ROM
+)(
+    input addr[$clog2(WORDS)], // this ROM is WORD addressable
+    output out[32],
+output numinstr[10]
+) {
+
+const INSTRUCTIONS = {
+   // index 192: BR -4  loop FREEZE
+        32h77FFFFFC,
+        // index 191: BNE R3,-192 -> INIT(0)
+        32h7BE3FF40,
+        // index 190: ANDC R4,2,R3  check reset (bit1)
+        32hE0640002,
+        // index 189: LD R31,0xF0,R4  read buttons
+        32h609F00F0,
+        // index 188: BR -51 -> DRAW_BALL(138)
+        32h77FFFFCD,
+        // index 187: ST R3,0x2C,R31
+        32h647F002C,
+        // index 186: ANDC R3,3,R3  wrap
+        32hE0630003,
+        // index 185: ADDC R3,1,R3  index++
+        32hC0630001,
+        // index 184: BOUNCE R10,R31,R10  flip dy
+        32h054AF800,
+        // index 183: BEQ R15,+1
+        32h77EF0001,
+        // index 182: ANDC R3,2,R15  bit1
+        32hE1E30002,
+        // index 181: BOUNCE R9,R31,R9  flip dx
+        32h0529F800,
+        // index 180: BEQ R15,+1
+        32h77EF0001,
+        // index 179: ANDC R3,1,R15  bit0
+        32hE1E30001,
+        // index 178: ADDC R31,1,R10  dy=+1 base
+        32hC15F0001,
+        // index 177: ADDC R31,1,R9  dx=+1 base
+        32hC13F0001,
+        // index 176: LD R31,0x2C,R3  load vel_index
+        32h607F002C,
+        // index 175: ADDC R31,6,R7
+        32hC0FF0006,
+        // index 174: ADDC R31,7,R5
+        32hC0BF0007,
+        // index 173: BR 0 -> RESET_BALL(174)
+        32h77FF0000,
+        // index 172: ST R31,0x30,R31  clear pending
+        32h67FF0030,
+        // index 171: BNE -> FREEZE(189),off=17
+        32h7BE30011,
+        // index 170: CMPEQC R12,3,R3
+        32hD06C0003,
+        // index 169: ADDC R12,1,R12
+        32hC18C0001,
+        // index 168: ST R2,0,R3  P1 score (blue)
+        32h64430000,
+        // index 167: ADDC R3,0x13C,R3
+        32hC063013C,
+        // index 166: SHLC R12,7,R3
+        32hF06C0007,
+        // index 165: ST R31,0,R3  erase ball
+        32h67E30000,
+        // index 164: ADDC R3,0x100,R3
+        32hC0630100,
+        // index 163: ADD R3,R15,R3
+        32h80637800,
+        // index 162: SHLC R7,2,R15
+        32hF1E70002,
+        // index 161: SHLC R5,6,R3
+        32hF0650006,
+        // index 160: BR 13 -> RESET_BALL(174)
+        32h77FF000D,
+        // index 159: ST R31,0x30,R31  clear pending
+        32h67FF0030,
+        // index 158: BNE -> FREEZE(189),off=30
+        32h7BE3001E,
+        // index 157: CMPEQC R0,3,R3
+        32hD0600003,
+        // index 156: ADDC R0,1,R0
+        32hC0000001,
+        // index 155: ST R11,0,R3  P2 score (red)
+        32h65630000,
+        // index 154: ADDC R3,0x4FC,R3
+        32hC06304FC,
+        // index 153: SUB R31,R3,R3  negate for addr calc
+        32h847F1800,
+        // index 152: SHLC R0,7,R3
+        32hF0600007,
+        // index 151: ST R31,0,R3  erase ball
+        32h67E30000,
+        // index 150: ADDC R3,0x100,R3
+        32hC0630100,
+        // index 149: ADD R3,R15,R3
+        32h80637800,
+        // index 148: SHLC R7,2,R15
+        32hF1E70002,
+        // index 147: SHLC R5,6,R3
+        32hF0650006,
+        // index 146: BR -96 -> POLL_LOOP(51)
+        32h77FFFFA0,
+        // index 145: BNE R6,-2
+        32h7BE6FFFE,
+        // index 144: SUBC R6,1,R6
+        32hC4C60001,
+        // index 143: ADDC R31,5,R6
+        32hC0DF0005,
+        // index 142: ST R13,0,R3  draw ball
+        32h65A30000,
+        // index 141: ADDC R3,0x100,R3
+        32hC0630100,
+        // index 140: ADD R3,R15,R3
+        32h80637800,
+        // index 139: SHLC R7,2,R15
+        32hF1E70002,
+        // index 138: SHLC R5,6,R3
+        32hF0650006,
+        // index 137: BR 0 -> DRAW_BALL(138)
+        32h77FF0000,
+        // index 136: ST R3,0x30,R31
+        32h647F0030,
+        // index 135: ADDC R31,2,R3  flag=2
+        32hC07F0002,
+        // index 134: BR 3 -> DRAW_BALL(138)
+        32h77FF0003,
+        // index 133: ADDC R31,14,R5  push x=14
+        32hC0BF000E,
+        // index 132: BOUNCE R9,R31,R9  flip dx (P2 hit)
+        32h0529F800,
+        // index 131: BNE -> SET_PENDING_P1(135),off=3
+        32h7BE30003,
+        // index 130: CMPLT R3,R7,R3  R8+3 < ball_y?
+        32h94633800,
+        // index 129: ADDC R8,3,R3
+        32hC0680003,
+        // index 128: BNE -> SET_PENDING_P1(135),off=6
+        32h7BE30006,
+        // index 127: CMPLT R7,R8,R3  ball_y < R8?
+        32h94674000,
+        // index 126: BNE -> SET_PENDING_P1(135),off=8
+        32h7BE30008,
+        // index 125: CMPLTC R9,1,R3  dx<=0?
+        32hD4690001,
+        // index 124: BEQ -> NO_X_BOUNCE(138),off=13
+        32h77E3000D,
+        // index 123: CMPEQC R5,15,R3
+        32hD065000F,
+        // index 122: BR 15 -> DRAW_BALL(138)
+        32h77FF000F,
+        // index 121: ST R3,0x30,R31
+        32h647F0030,
+        // index 120: ADDC R31,1,R3  flag=1
+        32hC07F0001,
+        // index 119: BR 18 -> DRAW_BALL(138)
+        32h77FF0012,
+        // index 118: ADDC R31,1,R5  push x=1
+        32hC0BF0001,
+        // index 117: BOUNCE R9,R31,R9  flip dx (P1 hit)
+        32h0529F800,
+        // index 116: BNE -> SET_PENDING_P2(120),off=3
+        32h7BE30003,
+        // index 115: CMPLT R3,R7,R3  R1+3 < ball_y?
+        32h94633800,
+        // index 114: ADDC R1,3,R3
+        32hC0610003,
+        // index 113: BNE -> SET_PENDING_P2(120),off=6
+        32h7BE30006,
+        // index 112: CMPLT R7,R1,R3  ball_y < R1?
+        32h94670800,
+        // index 111: BEQ -> PADDLE_P2(123),off=11
+        32h77E3000B,
+        // index 110: CMPLTC R9,0,R3  dx<0?
+        32hD4690000,
+        // index 109: BEQ -> PADDLE_P2(123),off=13
+        32h77E3000D,
+        // index 108: CMPEQC R5,0,R3
+        32hD0650000,
+        // index 107: ADDC R31,13,R7  clamp y=13
+        32hC0FF000D,
+        // index 106: BOUNCE R10,R31,R10  flip dy
+        32h054AF800,
+        // index 105: BNE R3,+2
+        32h7BE30002,
+        // index 104: CMPLTC R7,13,R3  ball_y < 13?
+        32hD467000D,
+        // index 103: ADDC R31,0,R7  clamp y=0
+        32hC0FF0000,
+        // index 102: BOUNCE R10,R31,R10  flip dy
+        32h054AF800,
+        // index 101: BEQ R3,+2
+        32h77E30002,
+        // index 100: CMPLTC R7,1,R3  ball_y < 1?
+        32hD4670001,
+        // index 99: ADD R7,R10,R7  ball_y += dy
+        32h80E75000,
+        // index 98: ADD R5,R9,R5  ball_x += dx
+        32h80A54800,
+        // index 97: ST R31,0,R3  erase ball
+        32h67E30000,
+        // index 96: ADDC R3,0x100,R3
+        32hC0630100,
+        // index 95: ADD R3,R15,R3
+        32h80637800,
+        // index 94: SHLC R7,2,R15
+        32hF1E70002,
+        // index 93: SHLC R5,6,R3
+        32hF0650006,
+        // index 92: ST R11,16,R3
+        32h65630010,
+        // index 91: ADDC R8,1,R8
+        32hC1080001,
+        // index 90: ST R31,0,R3
+        32h67E30000,
+        // index 89: ADDC R3,0x4C0,R3
+        32hC06304C0,
+        // index 88: SHLC R8,2,R3
+        32hF0680002,
+        // index 87: BNE R3,+5
+        32h7BE30005,
+        // index 86: CMPEQC R8,13,R3 (p2 bottom)
+        32hD068000A,
+        // index 85: BEQ R3,+7
+        32h77E30007,
+        // index 84: ANDC R4,0x10,R3  P2 down (bit3)
+        32hE0640010,
+        // index 83: ST R11,-4,R3
+        32h6563FFFC,
+        // index 82: SUBC R8,1,R8
+        32hC5080001,
+        // index 81: ST R31,12,R3
+        32h67E3000C,
+        // index 80: ADDC R3,0x4C0,R3
+        32hC06304C0,
+        // index 79: SHLC R8,2,R3
+        32hF0680002,
+        // index 78: BNE R3,+5
+        32h7BE30005,
+        // index 77: CMPEQC R8,0,R3
+        32hD0680000,
+        // index 76: BEQ R3,+7
+        32h77E30007,
+        // index 75: ANDC R4,8,R3  P2 up (bit4)
+        32hE0640008,
+        // index 74: ST R2,16,R3
+        32h64430010,
+        // index 73: ADDC R1,1,R1
+        32hC0210001,
+        // index 72: ST R31,0,R3
+        32h67E30000,
+        // index 71: ADDC R3,0x100,R3
+        32hC0630100,
+        // index 70: SHLC R1,2,R3
+        32hF0610002,
+        // index 69: BNE R3,+5
+        32h7BE30005,
+        // index 68: CMPEQC 13,,R3 (p1 bottom)
+        32hD061000A,
+        // index 67: BEQ R3,+7
+        32h77E30007,
+        // index 66: ANDC R4,1,R3  P1 down (bit2)
+        32hE0640001,
+        // index 65: ST R2,-4,R3
+        32h6443FFFC,
+        // index 64: SUBC R1,1,R1
+        32hC4210001,
+        // index 63: ST R31,12,R3
+        32h67E3000C,
+        // index 62: ADDC R3,0x100,R3
+        32hC0630100,
+        // index 61: SHLC R1,2,R3
+        32hF0610002,
+        // index 60: BNE R3,+5
+        32h7BE30005,
+        // index 59: CMPEQC R1,0,R3
+        32hD0610000,
+        // index 58: BEQ R3,+7
+        32h77E30007,
+        // index 57: ANDC R4,4,R3  P1 up (bit0)
+        32hE0640004,
+        // index 56: BNE R15 -> DO_SCORE_P1(161),off=104
+        32h7BEF0068,
+        // index 55: CMPEQC R3,2,R15
+        32hD1E30002,
+        // index 54: BNE R15 -> DO_SCORE_P2(147),off=92
+        32h7BEF005C,
+        // index 53: CMPEQC R3,1,R15
+        32hD1E30001,
+        // index 52: LD R31,0x30,R3
+        32h607F0030,
+        // index 51: LD R31,0xF0,R4  read buttons
+        32h609F00F0,
+        // index 50: ST R31,0x30,R31  pending=0
+        32h67FF0030,
+        // index 49: ST R3,0x2C,R31  vel_index=1
+        32h647F002C,
+        // index 48: ADDC R31,1,R3
+        32hC07F0001,
+        // index 47: ADDC R31,0,R0  P2 score=0
+        32hC01F0000,
+        // index 46: ADDC R31,0,R12  P1 score=0
+        32hC19F0000,
+        // index 45: ST R13,0,R3  draw ball
+        32h65A30000,
+        // index 44: ADDC R31,0x2D8,R3
+        32hC07F02D8,
+        // index 43: ADDC R31,1,R10  dy=+1
+        32hC15F0001,
+        // index 42: ADDC R31,1,R9  dx=+1
+        32hC13F0001,
+        // index 41: ADDC R31,6,R7  ball_y=6
+        32hC0FF0006,
+        // index 40: ADDC R31,7,R5  ball_x=7
+        32hC0BF0007,
+        // index 39: BNE R15,-4
+        32h7BEFFFFC,
+        // index 38: SUBC R15,1,R15
+        32hC5EF0001,
+        // index 37: ADDC R3,64,R3
+        32hC0630040,
+        // index 36: ST R14,0,R3
+        32h65C30000,
+        // index 35: ADDC R31,16,R15
+        32hC1FF0010,
+        // index 34: ADDC R31,0x138,R3
+        32hC07F0138,
+        // index 33: ADDC R13,0x10,R13
+        32hC1AD0010,
+        // index 32: SHLC R13,8,R13
+        32hF1AD0008,
+        // index 31: ADDC R13,0x10,R13
+        32hC1AD0010,
+        // index 30: SHLC R13,8,R13
+        32hF1AD0008,
+        // index 29: ADDC R31,0x10,R13
+        32hC1BF0010,
+        // index 28: ADDC R14,1,R14
+        32hC1CE0008,
+        // index 27: SHLC R14,8,R14
+        32hF1CE0008,
+        // index 26: ADDC R14,1,R14
+        32hC1CE0008,
+        // index 25: SHLC R14,8,R14
+        32hF1CE0008,
+        // index 24: ADDC R31,1,R14
+        32hC1DF0008,
+        // index 23: ST R11,12,R3
+        32h6563000C,
+        // index 22: ST R11,8,R3
+        32h65630008,
+        // index 21: ST R11,4,R3
+        32h65630004,
+        // index 20: ST R11,0,R3
+        32h65630000,
+        // index 19: ADDC R3,0x4C0,R3
+        32hC06304C0,
+        // index 18: SHLC R8,2,R3
+        32hF0680002,
+        // index 17: ST R2,12,R3
+        32h6443000C,
+        // index 16: ST R2,8,R3
+        32h64430008,
+        // index 15: ST R2,4,R3
+        32h64430004,
+        // index 14: ST R2,0,R3
+        32h64430000,
+        // index 13: ADDC R3,0x100,R3
+        32hC0630100,
+        // index 12: SHLC R1,2,R3
+        32hF0610002,
+        // index 11: SHLC R11,8,R11  R11=0x004000 red 25%
+        32hF16B0008,
+        // index 10: ADDC R31,0x66,R11
+        32hC17F0066,
+        // index 9: SHLC R2,16,R2  R2=0x400000 blue 25%
+        32hF0420010,
+        // index 8: ADDC R31,0x66,R2
+        32hC05F0066,
+        // index 7: ADDC R31,5,R8  P2 col=5
+        32hC11F0005,
+        // index 6: ADDC R31,5,R1  P1 col=5
+        32hC03F0005,
+        // index 5: BNE R15,-4  -> CLEAR_LOOP
+        32h7BEFFFFC,
+        // index 4: SUBC R15,1,R15
+        32hC5EF0001,
+        // index 3: ADDC R3,4,R3
+        32hC0630004,
+        // index 2: ST R31,0,R3  write black
+        32h67E30000,
+        // index 1: ADDC R31,256,R15  count=256
+        32hC1FF0100,
+        // index 0: ADDC R31,0x100,R3  clear base
+        32hC07F0100
+
+};
+    const NUM_OF_INSTRUCTIONS = $width(INSTRUCTIONS,0) // compute how many instructions are there
+    
+    always {
+        if (addr < NUM_OF_INSTRUCTIONS){ // check if addr < number of instructions before slicing the array
+            out = INSTRUCTIONS[addr]
+        }
+        else{
+            out = 0
+        }
+        numinstr = NUM_OF_INSTRUCTIONS
+    }
+}

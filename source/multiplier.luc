@@ -1,0 +1,35 @@
+module multiplier (
+    input a[32],
+    input b[32],
+    output mul[32]
+  ) {
+  
+  // We need 32 shifters to generate all partial products simultaneously
+ left_shifter left[32];
+ rca_32_bit add[31];
+ sig partial_products[32][32];   
+
+  always {
+    //Generate all shifted versions of 'a'
+    
+    repeat(i, 32) {
+      left.a[i] = a;
+      left.b[i] = $resize(i, 5);
+      left.pad[i] = 0;
+      
+      partial_products[i] = left.shl[i] & 32x{b[i]};
+    }
+
+    add.a[0] = partial_products[0];
+    add.b[0] = partial_products[1]
+        add.cin = 32b0
+    
+    repeat(i,30) {
+            add.a[i+1] = add.out[i]
+            add.b[i+1] = partial_products[i+2] 
+            add.cin = 32b0
+    }
+        mul = add.out[30]
+       
+    }
+}

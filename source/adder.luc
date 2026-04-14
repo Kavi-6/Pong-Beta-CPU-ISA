@@ -1,0 +1,35 @@
+module adder #(
+    SIZE = 32 : SIZE > 1
+)(
+    input a[SIZE],
+    input b[SIZE],
+    input alufn[6],
+    output s[SIZE],
+    output z,
+    output v,
+    output n
+) {
+    
+    rca_32_bit rca(.cin(alufn[0]),.a(a))
+    zvn_unit zvn
+ 
+    sig xb[32]
+    always {
+        // implement adder/subtractor unit logic here
+        repeat(i,32){
+            xb[i] = b[i] ^ alufn[0]
+        }
+        
+        rca.b = xb
+        
+        zvn.s = rca.out
+        zvn.a31 = a[31]
+        zvn.xb31 = xb[31]
+        
+        s = rca.out
+        z = zvn.z
+        v = zvn.v
+        n = zvn.n
+        
+    }
+}

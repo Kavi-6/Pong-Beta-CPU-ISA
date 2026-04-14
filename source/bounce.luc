@@ -1,0 +1,11 @@
+module bounce (
+    input a[32],  
+    output out[32]
+) {
+    sig interim[32];
+    
+    always {
+        interim = ~a;
+        out = interim + 1
+    }
+}

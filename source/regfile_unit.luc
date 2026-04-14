@@ -1,0 +1,62 @@
+module regfile_unit (
+    input clk,
+    input rst,
+    input slowclk,
+    input rc[5],
+    input ra[5],
+    input rb[5],
+    input ra2sel,
+    input wasel,
+    input werf,
+    input wdsel_out[32],
+    output rd1[32],     
+    output rd2[32],     
+    output mwd[32],
+    output z
+) {
+    .clk(clk) {
+        .rst(rst) {
+            dff registers[32][32]  
+        }
+    }
+
+    sig ra2sel_out[5]
+    sig wasel_out[5]
+    sig read1[32]
+    sig read2[32]
+
+    always {
+        case (ra2sel) {
+            0:       ra2sel_out = rb
+            1:       ra2sel_out = rc
+            default: ra2sel_out = rb
+        }
+
+        case (wasel) {
+            0:       wasel_out = rc
+            1:       wasel_out = 5b11110   
+            default: wasel_out = rc
+        }
+
+        // Read ports
+        read1 = registers.q[ra]
+        read2 = registers.q[ra2sel_out]
+
+        // R31 hardwired to 0
+        if (ra == 5b11111)          read1 = 32b0
+        if (ra2sel_out == 5b11111)  read2 = 32b0
+
+        // Write port: gated by slowclk, werf, and not R31
+        if (slowclk && werf && wasel_out != 5b11111) {
+            registers.d[wasel_out] = wdsel_out
+        }
+
+        // Z flag
+        z = ~|read1
+
+        // Drive outputs
+        rd1 = read1
+        rd2 = read2
+        mwd = read2
+    }
+}

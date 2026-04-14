@@ -1,0 +1,22 @@
+module mux_4 (
+    input x,
+    input z,
+    input nxorv,
+    input nxorvorz,
+    input alufn[2],
+    output cmp
+) {
+    mux_2 mux[3]
+    always {
+        mux.s0[0] = alufn[1]
+        mux.s0[1] = alufn[1]
+        mux.s0[2] = alufn[0]
+        
+        mux.in[0] = c{nxorv,x}
+        mux.in[1] = c{nxorvorz,z}
+        
+        mux.in[2] = c{mux.out[1],mux.out[0]}
+        
+        cmp = mux.out[2]
+    }
+}

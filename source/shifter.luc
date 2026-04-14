@@ -1,0 +1,24 @@
+module shifter (
+    input a[32],
+    input b[32], // Change to 32
+    input alufn[6],
+    output shift[32]
+) {
+
+    left_shifter shl(.a(a), .b(b[4:0]), .pad(0));
+    right_shifter shr(.a(a), .b(b[4:0]), .pad(0));
+    right_shifter sra(.a(a), .b(b[4:0]), .pad(a[31]));
+
+    always {
+
+        case (alufn[1:0]) {
+            2b00: shift = shl.shl ;
+            2b01: shift = shr.shr;
+            2b11: shift = sra.shr;
+            default:
+                shift = 32b0;
+        }
+
+        
+    } 
+}

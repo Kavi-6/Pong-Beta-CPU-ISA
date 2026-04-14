@@ -1,0 +1,26 @@
+STANDARD(LVCMOS33) {
+    pin clk CLOCK FREQUENCY(10MHz)
+    
+    // The data line for your 16x16 matrix (using pin A2)
+    
+
+// The 4 paddle buttons (using pins B2, B3, B5, B6)
+    pin btn[0] B2; // P1 Up
+    pin btn[1] B3; // P1 Down
+    pin btn[2] B5; // P2 Up
+    pin btn[3] B6; // P2 Down
+
+    pin rst_n RESET
+
+    pin led[0] LED0
+    pin led[1] LED1
+    pin led[2] LED2
+    pin led[3] LED3
+    pin led[4] LED4
+    pin led[5] LED5
+    pin led[6] LED6
+    pin led[7] LED7
+
+    pin usb_rx USB_RX
+    pin usb_tx USB_TX
+}

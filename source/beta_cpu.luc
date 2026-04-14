@@ -1,0 +1,120 @@
+module beta_cpu (
+    input clk,  // clock
+    input slowclk,
+    input rst,
+    input irq,
+    input instruction[32],
+    input mem_data_input[32],
+    output ia[32],
+    output mem_data_address[32],
+    output mem_data_output[32],
+    output wr,
+    output debug[4][16]
+    
+) {
+    
+    control_unit control_system(.clk(clk), .rst(rst))
+    alu alu_system
+    regfile_unit regfile_system(.clk(clk), .rst(rst))
+    pc_unit pc_system(.clk(clk), .rst(rst))
+    
+    sig asel_out[32]
+    sig bsel_out[32]
+    sig wdsel_out[32]
+    sig id[32]
+    
+    always {
+        // default connections to silence errors
+        
+        case(control_system.asel){
+            1b0:asel_out = regfile_system.rd1
+            1b1:asel_out = c{1b0,pc_system.pc_4_sxtc[30:0]}
+            default:asel_out = regfile_system.rd1
+        }
+        
+         if (instruction[15]){
+              id = c{16b1111111111111111,instruction[15:0]}
+         }else{
+              id = c{16b0000000000000000,instruction[15:0]}
+         }
+        
+        case(control_system.bsel){
+            1b0:bsel_out = regfile_system.rd2
+            1b1:bsel_out = id
+            default:bsel_out = regfile_system.rd2
+        }
+
+        case(control_system.wdsel) {
+    2b00: wdsel_out = pc_system.pc_4;      // Standard for Branches/Jumps
+    2b01: wdsel_out = alu_system.out;     // YOUR ROM SENDS 10 FOR ARITHMETIC
+    2b10: wdsel_out = mem_data_input;     // YOUR ROM SENDS 01 FOR LD
+    default: wdsel_out = alu_system.out;
+}
+        
+        ia = pc_system.ia
+        mem_data_address = alu_system.out
+        mem_data_output = regfile_system.mwd
+        wr = control_system.wr
+        
+        control_system.irq = irq
+        control_system.z = regfile_system.z
+        control_system.ia31 = pc_system.ia[31]
+        control_system.opcode = instruction[31:26]
+        control_system.slowclk = slowclk
+        
+        alu_system.a = asel_out
+        alu_system.b = bsel_out
+        alu_system.alufn = control_system.alufn
+        
+        regfile_system.ra = instruction[20:16]
+        regfile_system.rb = instruction[15:11]
+        regfile_system.rc = instruction[25:21]
+        regfile_system.werf = control_system.werf
+        regfile_system.wasel = control_system.wasel
+        regfile_system.ra2sel = control_system.ra2sel
+        regfile_system.slowclk = slowclk
+        regfile_system.wdsel_out = wdsel_out
+        
+        pc_system.id = instruction[15:0]
+        pc_system.pcsel = control_system.pcsel
+        pc_system.slowclk = slowclk
+        pc_system.reg_data_1 = regfile_system.rd1
+        
+        
+        
+        // Task 12
+        //***** CONTROL unit ******// 
+        
+        
+        //***** PC unit ******// 
+        
+        
+        //***** REGFILE unit *****//
+        
+        
+        //****** ALU + WDSEL unit *******//
+        // ASEL mux
+        
+        // BSEL mux
+        
+        // WDSEL mux
+        
+        // connect asel and bsel to alu, wdsel to regfile
+        
+        
+        // remaining beta datapath connections
+        // connect alu_system with asel_out and bsel_out
+        // connect regfile_system with wdsel_out 
+        // connect mem_data_address with the output of the alu
+        // connect mem_data_output with regfile_system 
+        // connect wr sig with control_system 
+        // connect ia with pc system
+        
+        // debug signals
+        debug[0][15:0] = pc_system.pcsel_out[15:0]
+        debug[1][15:0] = asel_out[15:0]
+        debug[2][15:0] = bsel_out[15:0]
+        debug[3][15:0] = wdsel_out[15:0]
+        
+    }
+}

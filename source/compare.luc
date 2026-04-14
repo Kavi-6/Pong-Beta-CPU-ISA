@@ -1,0 +1,26 @@
+module compare #(SIZE = 32 : SIZE > 1)(
+    
+    input alufn[6],
+    input z,
+    input v,
+    input n,
+    output cmp
+) {
+    mux_4 mux(.x(1b0));
+
+    sig nxorv
+    sig nxorvorz
+    always {
+
+        nxorv = n^v
+        nxorvorz = nxorv|z
+        
+        mux.alufn = alufn[2:1]
+        
+        mux.z = z
+        mux.nxorv = nxorv
+        mux.nxorvorz = nxorvorz
+        
+        cmp = mux.cmp
+    }
+}

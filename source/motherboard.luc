@@ -1,0 +1,141 @@
+module motherboard (
+    input clk,  
+    input rst,  
+    input irq[5],
+    input slowclk,  
+    output led_data, 
+    output id[32],
+    output ia[32],
+    output ma[32],  
+    output mrd[32], 
+    output mwd[32], 
+    output output_buffer[32],
+    output input_buffer[32],
+    output debug[4][16]
+) {
+    
+    beta_cpu beta(.clk(clk));
+    
+    edge_detector slow_edge(#RISE(1), #FALL(0), .clk(clk));
+    
+    const MEMORY_SIZE = 512; 
+    instruction_rom instruction_unit(#WORDS(MEMORY_SIZE));
+    memory_unit memory_unit(#WORDS(MEMORY_SIZE), .clk(clk)); 
+    
+    game_io_hub hub(.clk(clk), .rst(rst));
+
+    // LED Driver and Reverser
+    ws2812b_driver driver(#PIXEL_COUNT(256), .clk(clk), .rst(rst));
+    reverser rev(#SIZE($clog2(256)), #COLUMN_DIMENSION(16));
+
+    dff system_output_buffer[32](.clk(clk), .rst(rst)); 
+    dff system_input_buffer[32](.clk(clk), .rst(rst)); 
+    
+    dff writer_counter[$clog2(MEMORY_SIZE)](.clk(clk));
+
+    // Updated Enum with your new LED states
+    enum MotherboardStates {
+        INSTRUCTIONLOAD, 
+        RUN, 
+        LOAD_OUTPUT, 
+        DISPLAY_OUTPUT, 
+        
+        START_LED,
+        WAIT_LED
+    }
+    dff motherboard[$width(MotherboardStates)](.clk(clk), .rst(rst), #INIT(MotherboardStates.INSTRUCTIONLOAD));
+    
+    always {
+        system_input_buffer.d = hub.status_word;
+        slow_edge.in = slowclk;
+        // --- Default Signals ---
+        instruction_unit.addr = 0;
+        beta.irq = 0; 
+        // Keep the timer spinning 
+     
+        beta.slowclk = slow_edge.out 
+        
+        beta.rst = rst | (motherboard.q == MotherboardStates.INSTRUCTIONLOAD);
+        hub.irq = irq;
+        led_data = driver.data;
+        
+        hub.addr = beta.mem_data_address;
+        
+        // --- Driver / Reverser Wiring ---
+        rev.input_address = driver.pixel_address;
+        driver.color = memory_unit.mrd[23:0];// The driver "samples" the memory output
+        driver.update = 0; // Default to 0, pulsed in START_LED
+        driver.clear = 0;
+
+        // --- Memory Connections (Standard) ---
+        beta.instruction = memory_unit.id;
+        if (beta.mem_data_address == 32hf0) {
+            beta.mem_data_input = hub.status_word;
+            hub.wr_en = beta.wr; // Pass the write signal to clear latches
+        } else {
+            beta.mem_data_input = memory_unit.mrd;
+            hub.wr_en = 0;
+        }
+        memory_unit.ia = beta.ia[31:0]; 
+        memory_unit.wd = beta.mem_data_output; 
+        memory_unit.we = beta.wr; 
+        memory_unit.waddr = beta.mem_data_address[31:0]; 
+        memory_unit.raddr = beta.mem_data_address[31:0];
+        
+        memory_unit.instruction_we = b0;
+        memory_unit.instruction_wd = 32b0; 
+
+        // --- State Machine ---
+        case(motherboard.q){
+            MotherboardStates.INSTRUCTIONLOAD:
+                beta.rst = 1;
+                writer_counter.d = writer_counter.q + 1;
+                instruction_unit.addr = writer_counter.q;
+                memory_unit.instruction_wd = instruction_unit.out;
+                memory_unit.instruction_we = b1;
+                memory_unit.ia = writer_counter.q << 2; 
+                if ((writer_counter.q + 1) == MEMORY_SIZE) motherboard.d = MotherboardStates.RUN;
+            
+            MotherboardStates.RUN:
+                
+    
+                // Default: CPU has full control of memory
+                memory_unit.we = beta.wr;
+                memory_unit.raddr = beta.mem_data_address[31:0];
+                memory_unit.waddr = beta.mem_data_address[31:0];
+
+                if (slow_edge.out) {
+                    motherboard.d = MotherboardStates.LOAD_OUTPUT;
+                }
+            
+            MotherboardStates.LOAD_OUTPUT:
+                memory_unit.raddr = 32hC;
+                motherboard.d = MotherboardStates.DISPLAY_OUTPUT;
+            
+            MotherboardStates.DISPLAY_OUTPUT:
+                system_output_buffer.d = memory_unit.mrd;
+                motherboard.d = MotherboardStates.START_LED;
+            
+            
+            MotherboardStates.START_LED:
+                driver.update = 1; // Pulse the start signal to the WS2812B
+                motherboard.d = MotherboardStates.WAIT_LED;
+                
+            MotherboardStates.WAIT_LED:
+                
+                memory_unit.raddr = (rev.output_address << 2) + 256; 
+                memory_unit.we = 0; // <--- ADD THIS: Protect the RAM while the LED driver reads it
+                driver.color = memory_unit.mrd[23:0]; 
+    
+                if (driver.done) {
+                    motherboard.d = MotherboardStates.RUN;
+                }
+        }
+        
+        // Final Outputs
+        output_buffer = system_output_buffer.q;
+        input_buffer = system_input_buffer.q;
+        ia = beta.ia; id = memory_unit.id; ma = beta.mem_data_address;
+        mrd = memory_unit.mrd; mwd = beta.mem_data_output; debug = beta.debug;
+    }
+}

@@ -1,0 +1,19 @@
+module mux_4_32 (
+    input in[4],
+    input gate[2],
+    output out
+) {
+    mux_2 mux[3]
+    always {
+        mux.s0[0] = gate[1]
+        mux.s0[1] = gate[1]
+        mux.s0[2] = gate[0]
+        
+        mux.in[0] = c{in[2],in[0]}
+        mux.in[1] = c{in[3],in[1]}
+        
+        mux.in[2] = c{mux.out[1],mux.out[0]}
+        
+        out = mux.out[2]
+    }
+}

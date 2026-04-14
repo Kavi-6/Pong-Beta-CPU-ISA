@@ -1,0 +1,32 @@
+module game_io_hub (
+    input clk,
+    input rst,
+    input irq[5],           // Change [4] to [5]
+    input addr[32],        
+    output status_word[32],
+    input wr_en[1]
+  ) {
+  
+  button_conditioner cond0(.clk(clk), #CLK_FREQ(100000000));
+  button_conditioner cond1(.clk(clk), #CLK_FREQ(100000000));
+  button_conditioner cond2(.clk(clk), #CLK_FREQ(100000000));
+  button_conditioner cond3(.clk(clk), #CLK_FREQ(100000000));
+  button_conditioner cond4(.clk(clk), #CLK_FREQ(100000000)); // ADDED BUTTON 4
+
+  always {
+    cond0.in = irq[0];
+    cond1.in = irq[1];
+    cond2.in = irq[2];
+    cond3.in = irq[3];
+    cond4.in = irq[4]; // ADDED BUTTON 4 INPUT
+
+    status_word[0] = cond0.out;  // P1 Up
+    status_word[1] = cond1.out;  // Reset
+    status_word[2] = cond2.out;  // P1 Down
+    status_word[3] = cond3.out;  // P2 Down
+    status_word[4] = cond4.out;  // P2 Up (Replaces the hardcoded 0!)
+
+    status_word[5] = 0; 
+    status_word[31:6] = 26h0;
+  }
+}

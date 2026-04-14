@@ -1,0 +1,51 @@
+module alu (
+    input a[32],
+    input b[32],
+    input alufn[6],
+    output out[32],
+    output z,
+    output v,
+    output n
+) {
+    adder add(.a(a),.b(b),.alufn(alufn),#SIZE(32))
+    compare cmp(.z(add.z),.v(add.v),.n(add.n),.alufn(alufn),#SIZE(32))
+    boolean bool(.a(a),.b(b),.alufn(alufn),#SIZE(32))
+    shifter shift(.a(a),.b(b),.alufn(alufn))
+    multiplier mult(.a(a),.b(b))
+    bounce bnc(.a(a))
+    
+    sig addmult[32]
+    sig comp[32]
+    sig addmultbnc[32]
+    
+always {
+        // 1. Combine Arithmetic operations (Adder, Multiplier, Bounce)
+        // We use a case or specific bits to ensure we don't override SUB
+        case (alufn[2:0]) {
+            3b010:   addmultbnc = mult.mul; // MUL uses 000010
+            3b100:   addmultbnc = bnc.out;  // BOUNCE uses 000100
+            default: addmultbnc = add.s;    // ADD (000000) and SUB (000001)
+        }
+
+        // 2. Setup the Compare result
+        comp = c{31b0, cmp.cmp};
+
+        // 3. Final 4-way Mux (alufn[5:4])
+        // 00: Arithmetic (Add/Sub/Mul/Bounce)
+        // 01: Boolean
+        // 10: Shifter
+        // 11: Compare
+        case (alufn[5:4]) {
+            2b00: out = addmultbnc;
+            2b01: out = bool.bool;
+            2b10: out = shift.shift;
+            2b11: out = comp;
+            default: out = addmultbnc;
+        }
+
+        // 4. Flags
+        z = add.z;
+        v = add.v;
+        n = add.n;
+    }
+}
